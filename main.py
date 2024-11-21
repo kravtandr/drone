@@ -119,12 +119,147 @@ class RaspberryCamera:
         self.close()
 
 
-from time import sleep
+from scipy.spatial import distance
+import numpy as np 
+import pandas as pd 
+import cv2
+import torch
+from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms
+import torch.nn as nn
+import pickle
 
-def basic_example():
+train_on_gpu = torch.cuda.is_available()
+
+if not train_on_gpu:
+    print('CUDA is not available')
+else:
+    print('CUDA is available!')
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+# Constants
+TILE_STEP = 50
+TILE_SIZE = 300
+ENCODED_SPACE_DIM = 256
+NEARBY_DELTA = 300
+MAP_PATH = './map/test_map_crop.png'
+ENCODER_MODEL_PATH = './models/best_encoder_02_08.pth'
+EMBEDDINGS_PATH = "embeddings.pkl"
+MATRIX_PATH = "inv_cov_matrix.npy"
+
+def load_matrix(filename):
     """
-    Базовый пример использования камеры: получение и сохранение одного снимка
+    Загружает матрицу из файла
+    
+    Параметры:
+    filename: str - имя файла для загрузки (с расширением .npy)
+    
+    Возвращает:
+    numpy array - загруженная матрица
     """
+    try:
+        matrix = np.load(filename)
+        print(f"Матрица успешно загружена из файла {filename}")
+        return matrix
+    except Exception as e:
+        print(f"Ошибка при загрузке матрицы: {e}")
+        return None
+    
+def load_embeddings_from_file(filename):
+    try:
+        with open(filename, 'rb') as file:
+            embeddings = pickle.load(file)
+        print(f"Эмбеддинги успешно загружены из файла {filename}")
+        return embeddings
+    except Exception as e:
+        print(f"Ошибка при загрузке эмбеддингов: {e}")
+        return None
+
+class Drone:
+    def __init__(self, id, x, y, z):
+        self.id = id
+        self.x = x
+        self.y = y
+        self.z = z
+
+class Encoder(nn.Module):
+
+    def __init__(self, ENCODED_SPACE_DIM):
+        super().__init__()
+        
+        self.encoded_space_dim = ENCODED_SPACE_DIM
+        ### Convolutional section
+        self.encoder_cnn = nn.Sequential(
+            nn.Conv2d(3, 8, 4, stride=2, padding=0),
+            nn.ReLU(True),
+            nn.Conv2d(8, 16, 4, stride=2, padding=0),
+            nn.BatchNorm2d(16),
+            nn.ReLU(True),
+            nn.Conv2d(16, 32, 4, stride=2, padding=0),
+            nn.ReLU(True),
+            nn.Conv2d(32, 64, 4, stride=2, padding=0),
+            nn.ReLU(True),
+            nn.Conv2d(64, 128, 4, stride=2, padding=1),
+            nn.ReLU(True)
+        )
+        
+        ### Flatten layer
+        self.flatten = nn.Flatten(start_dim=1)
+        ### Linear section
+        self.encoder_lin = nn.Sequential(
+            nn.Linear(8 * 8 * 128, 1024),
+            nn.ReLU(True),
+            nn.Linear(1024, ENCODED_SPACE_DIM)
+        )
+        
+    def forward(self, x):
+        x = self.encoder_cnn(x)
+        x = self.flatten(x)
+        x = self.encoder_lin(x)
+        return x 
+
+def image_to_tensor(image):
+    fpv_image = cv2.cvtColor(fpv_image, cv2.COLOR_BGR2RGB)
+    transform=transforms.ToTensor()
+    fpv_image = transform(fpv_image)
+    fpv_image = fpv_image.unsqueeze(0)
+    # print("Image shape:",fpv_image.shape)
+    return fpv_image
+
+def image_to_embeding(inputs):
+     
+    encoder = Encoder(ENCODED_SPACE_DIM=256)
+    encoder.to(device)
+    best_encoder = torch.load(ENCODER_MODEL_PATH, weights_only=True)
+    encoder.load_state_dict(best_encoder)  
+    encoder.eval()
+    with torch.no_grad():
+        inputs = inputs.to(device)
+        coded= encoder(inputs)
+        coded = coded.cpu().numpy()
+        print("Image coded emb shape:",coded.shape)
+        return coded
+
+def nearbyAreaCheck(drone, embedings, embeding_vector):
+    x = embedings[tuple(embeding_vector)][0]
+    y = embedings[tuple(embeding_vector)][1]
+    if abs(x-drone.x) < NEARBY_DELTA and abs(y-drone.y) < NEARBY_DELTA:
+        return True
+    else:
+        return False
+
+
+
+# drone start coords
+drone = Drone(0, 333, 777, 0)
+
+embedings = load_embeddings_from_file(EMBEDDINGS_PATH) 
+inv_cov_matrix = load_matrix(MATRIX_PATH)
+
+# while True:
+for i in range(1):
+    # get image from camera
     with RaspberryCamera() as camera:
         # Получаем изображение
         image = camera.capture_image()
@@ -137,47 +272,23 @@ def basic_example():
                 print("Ошибка при сохранении изображения")
         else:
             print("Ошибка при получении изображения")
-
-def continuous_capture_example(interval=5, duration=30):
-    """
-    Пример непрерывной съемки с заданным интервалом
     
-    Args:
-        interval (int): Интервал между снимками в секундах
-        duration (int): Общая продолжительность съемки в секундах
-    """
-    with RaspberryCamera(resolution=(1280, 720)) as camera:
-        start_time = time.time()
-        captured_count = 0
-        
-        print(f"Начинаем съемку на {duration} секунд с интервалом {interval} секунд")
-        
-        while (time.time() - start_time) < duration:
-            image = camera.capture_image()
-            if image is not None:
-                saved_path = camera.save_image(image)
-                if saved_path:
-                    captured_count += 1
-                    print(f"Сохранено изображение {captured_count}: {saved_path}")
-                else:
-                    print("Ошибка при сохранении изображения")
-            else:
-                print("Ошибка при получении изображения")
-            
-            # Ждем до следующего снимка
-            sleep(interval)
-        
-        print(f"Съемка завершена. Всего сохранено изображений: {captured_count}")
+    fpv_image = image_to_tensor(image)
 
-def main():
-    """
-    Главная функция с демонстрацией различных примеров использования камеры
-    """
-    print("1. Демонстрация получения одиночного снимка:")
-    basic_example()
-    
-    print("\n2. Демонстрация непрерывной съемки:")
-    continuous_capture_example(interval=2, duration=10)
+    # image to encoder
+    encoded_image = image_to_embeding(fpv_image).flatten()
 
-if __name__ == "__main__":
-    main()
+    min_mahalanobis_distance = np.inf
+    closest_embeding_vector = None
+    # тут нужно потом сравнивать не со всеми а только с ближайшими
+    for embeding_vector in  embedings.keys():
+        if nearbyAreaCheck(drone, embedings, embeding_vector):
+            mahalanobis_distance = distance.mahalanobis(encoded_image, embeding_vector, inv_cov_matrix)
+            # print(mahalanobis_distance)
+            if mahalanobis_distance < min_mahalanobis_distance:
+                min_mahalanobis_distance = mahalanobis_distance
+                closest_embeding_vector = embeding_vector
+
+    print("Min mahal: ",min_mahalanobis_distance)
+    print("New Drone coords: ",embedings[tuple(closest_embeding_vector)])
+    print("Real Drone coords: ", drone.x, drone.y)

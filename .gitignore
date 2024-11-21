@@ -73,7 +73,7 @@ logs/
 *.log
 output/
 data/
-models/
+models/*
 checkpoints/
 
 # Database

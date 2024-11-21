@@ -2,6 +2,8 @@ from picamera2 import Picamera2
 from datetime import datetime
 import time
 import os
+import numpy as np
+from PIL import Image
 
 class RaspberryCamera:
     """
@@ -250,6 +252,47 @@ def nearbyAreaCheck(drone, embedings, embeding_vector):
     else:
         return False
 
+def process_image_to_square(image_array, target_size=TILE_SIZE):
+    """
+    Обрабатывает изображение: обрезает до квадрата и масштабирует до целевого размера.
+    
+    Args:
+        image_array (numpy.ndarray): Исходное изображение в формате numpy array (1920x1080)
+        target_size (int): Целевой размер изображения (по умолчанию 300x300)
+    
+    Returns:
+        numpy.ndarray: Обработанное изображение размером target_size x target_size
+    """
+    try:
+        # Преобразуем numpy array в объект PIL Image
+        image = Image.fromarray(image_array)
+        
+        # Получаем текущие размеры
+        width, height = image.size
+        
+        # Определяем размер для обрезки (берем минимальную сторону)
+        crop_size = min(width, height)
+        
+        # Вычисляем координаты для центральной обрезки
+        left = (width - crop_size) // 2
+        top = (height - crop_size) // 2
+        right = left + crop_size
+        bottom = top + crop_size
+        
+        # Обрезаем изображение до квадрата
+        square_image = image.crop((left, top, right, bottom))
+        
+        # Масштабируем до целевого размера
+        resized_image = square_image.resize((target_size, target_size), Image.Resampling.LANCZOS)
+        
+        # Преобразуем обратно в numpy array
+        result = np.array(resized_image)
+        
+        return result
+        
+    except Exception as e:
+        print(f"Ошибка при обработке изображения: {str(e)}")
+        return None
 
 
 # drone start coords
@@ -264,6 +307,7 @@ for i in range(1):
     with RaspberryCamera() as camera:
         # Получаем изображение
         image = camera.capture_image()
+        image = process_image_to_square(image)
         if image is not None:
             # Сохраняем изображение
             saved_path = camera.save_image(image)

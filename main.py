@@ -2,6 +2,8 @@ from picamera2 import Picamera2
 from datetime import datetime
 import time
 import os
+import numpy as np
+from PIL import Image
 
 class RaspberryCamera:
     """

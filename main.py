@@ -85,8 +85,9 @@ class RaspberryCamera:
                 os.makedirs(directory)
             
             # Генерируем имя файла на основе текущего времени
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"{directory}/image_{timestamp}.jpg"
+            # timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            # filename = f"{directory}/image_{timestamp}.jpg"
+            filename = f"{directory}/image.jpg"
             
             # Сохраняем изображение
             self.camera.capture_file(filename)
@@ -252,6 +253,49 @@ def nearbyAreaCheck(drone, embedings, embeding_vector):
         return False
 
 
+def process_image_to_square(image_array, target_size=TILE_SIZE):
+    """
+    Обрабатывает изображение: обрезает до квадрата и масштабирует до целевого размера.
+    
+    Args:
+        image_array (numpy.ndarray): Исходное изображение в формате numpy array (1920x1080)
+        target_size (int): Целевой размер изображения (по умолчанию 300x300)
+    
+    Returns:
+        numpy.ndarray: Обработанное изображение размером target_size x target_size
+    """
+    try:
+        # Преобразуем numpy array в объект PIL Image
+        image = Image.fromarray(image_array)
+        
+        # Получаем текущие размеры
+        width, height = image.size
+        
+        # Определяем размер для обрезки (берем минимальную сторону)
+        crop_size = min(width, height)
+        
+        # Вычисляем координаты для центральной обрезки
+        left = (width - crop_size) // 2
+        top = (height - crop_size) // 2
+        right = left + crop_size
+        bottom = top + crop_size
+        
+        # Обрезаем изображение до квадрата
+        square_image = image.crop((left, top, right, bottom))
+        
+        # Масштабируем до целевого размера
+        resized_image = square_image.resize((target_size, target_size), Image.Resampling.LANCZOS)
+        
+        # Преобразуем обратно в numpy array
+        result = np.array(resized_image)
+        
+        return result
+        
+    except Exception as e:
+        print(f"Ошибка при обработке изображения: {str(e)}")
+        return None
+
+
 
 # drone start coords
 drone = Drone(0, 333, 777, 0)
@@ -264,6 +308,7 @@ while True:
     with RaspberryCamera() as camera:
         # Получаем изображение
         image = camera.capture_image()
+        image = process_image_to_square(image)
     
     fpv_image = image_to_tensor(image)
 
@@ -281,7 +326,9 @@ while True:
                 min_mahalanobis_distance = mahalanobis_distance
                 closest_embeding_vector = embeding_vector
 
-    print("Min mahal: ",min_mahalanobis_distance)
-    print("New Drone coords: ",embedings[tuple(closest_embeding_vector)])
-    print("Real Drone coords: ", drone.x, drone.y)
-    time.sleep(10)
+    # print("Min mahal: ",min_mahalanobis_distance)
+    # print("New Drone coords: ",embedings[tuple(closest_embeding_vector)])
+    # print("Real Drone coords: ", drone.x, drone.y)
+
+    print(embedings[tuple(closest_embeding_vector)])
+    

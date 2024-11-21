@@ -296,7 +296,7 @@ def process_image_to_square(image_array, target_size=TILE_SIZE):
 
 
 # drone start coords
-drone = Drone(0, 333, 777, 0)
+drone = Drone(0, 2000, 4100, 0)
 
 embedings = load_embeddings_from_file(EMBEDDINGS_PATH) 
 inv_cov_matrix = load_matrix(MATRIX_PATH)

@@ -74,6 +74,9 @@ logs/
 output/
 data/
 models/*
+!models/.gitkeep
+map/
+!map/.gitkeep
 checkpoints/
 
 # Database

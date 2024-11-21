@@ -75,7 +75,7 @@ output/
 data/
 models/*
 !models/.gitkeep
-map/
+map/*
 !map/.gitkeep
 checkpoints/
 

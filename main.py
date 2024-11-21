@@ -220,7 +220,7 @@ class Encoder(nn.Module):
         return x 
 
 def image_to_tensor(image):
-    fpv_image = cv2.cvtColor(fpv_image, cv2.COLOR_BGR2RGB)
+    fpv_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     transform=transforms.ToTensor()
     fpv_image = transform(fpv_image)
     fpv_image = fpv_image.unsqueeze(0)

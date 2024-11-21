@@ -129,14 +129,15 @@ from torchvision import transforms
 import torch.nn as nn
 import pickle
 
-train_on_gpu = torch.cuda.is_available()
+# train_on_gpu = torch.cuda.is_available()
 
-if not train_on_gpu:
-    print('CUDA is not available')
-else:
-    print('CUDA is available!')
+# if not train_on_gpu:
+#     print('CUDA is not available')
+# else:
+#     print('CUDA is available!')
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cpu')
 
 # Constants
 TILE_STEP = 50
@@ -231,7 +232,7 @@ def image_to_embeding(inputs):
      
     encoder = Encoder(ENCODED_SPACE_DIM=256)
     encoder.to(device)
-    best_encoder = torch.load(ENCODER_MODEL_PATH, weights_only=True, map_location=device("cpu"))
+    best_encoder = torch.load(ENCODER_MODEL_PATH, weights_only=True, map_location=device)
     encoder.load_state_dict(best_encoder)  
     encoder.eval()
     with torch.no_grad():

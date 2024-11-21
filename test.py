@@ -257,11 +257,21 @@ drone = Drone(0, 333, 777, 0)
 embedings = load_embeddings_from_file(EMBEDDINGS_PATH) 
 inv_cov_matrix = load_matrix(MATRIX_PATH)
 
-while True:
+# while True:
+for i in range(1):
     # get image from camera
     with RaspberryCamera() as camera:
         # Получаем изображение
         image = camera.capture_image()
+        if image is not None:
+            # Сохраняем изображение
+            saved_path = camera.save_image(image)
+            if saved_path:
+                print(f"Изображение успешно сохранено: {saved_path}")
+            else:
+                print("Ошибка при сохранении изображения")
+        else:
+            print("Ошибка при получении изображения")
     
     fpv_image = image_to_tensor(image)
 
@@ -282,4 +292,3 @@ while True:
     print("Min mahal: ",min_mahalanobis_distance)
     print("New Drone coords: ",embedings[tuple(closest_embeding_vector)])
     print("Real Drone coords: ", drone.x, drone.y)
-    time.sleep(10)

@@ -231,7 +231,7 @@ def image_to_embeding(inputs):
      
     encoder = Encoder(ENCODED_SPACE_DIM=256)
     encoder.to(device)
-    best_encoder = torch.load(ENCODER_MODEL_PATH, weights_only=True)
+    best_encoder = torch.load(ENCODER_MODEL_PATH, weights_only=True, map_location=device("cpu"))
     encoder.load_state_dict(best_encoder)  
     encoder.eval()
     with torch.no_grad():

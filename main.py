@@ -4,6 +4,38 @@ import time
 import os
 import numpy as np
 from PIL import Image
+from scipy.spatial import distance
+import numpy as np 
+import pandas as pd 
+import cv2
+import torch
+from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms
+import torch.nn as nn
+import pickle
+
+
+
+
+# train_on_gpu = torch.cuda.is_available()
+
+# if not train_on_gpu:
+#     print('CUDA is not available')
+# else:
+#     print('CUDA is available!')
+
+# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cpu')
+
+# Constants
+TILE_STEP = 50
+TILE_SIZE = 300
+ENCODED_SPACE_DIM = 256
+NEARBY_DELTA = 300
+MAP_PATH = './map/test_map_crop.png'
+ENCODER_MODEL_PATH = './models/best_encoder_02_08.pth'
+EMBEDDINGS_PATH = "embeddings.pkl"
+MATRIX_PATH = "inv_cov_matrix.npy"
 
 class RaspberryCamera:
     """
@@ -122,34 +154,6 @@ class RaspberryCamera:
         self.close()
 
 
-from scipy.spatial import distance
-import numpy as np 
-import pandas as pd 
-import cv2
-import torch
-from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms
-import torch.nn as nn
-import pickle
-
-train_on_gpu = torch.cuda.is_available()
-
-if not train_on_gpu:
-    print('CUDA is not available')
-else:
-    print('CUDA is available!')
-
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-# Constants
-TILE_STEP = 50
-TILE_SIZE = 300
-ENCODED_SPACE_DIM = 256
-NEARBY_DELTA = 300
-MAP_PATH = './map/test_map_crop.png'
-ENCODER_MODEL_PATH = './models/best_encoder_02_08.pth'
-EMBEDDINGS_PATH = "embeddings.pkl"
-MATRIX_PATH = "inv_cov_matrix.npy"
 
 def load_matrix(filename):
     """
